@@ -7,7 +7,7 @@ const { auth } = require("./auth");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const bcrypt = require('bcrypt');
-const { tuple } = require('zod');
+const { z } = require('zod');
 
 // Connecting to MongoDB without useNewUrlParser and useUnifiedTopology
 // These options were required in older versions of the MongoDB driver.
@@ -26,6 +26,39 @@ const app = express();
 app.use(express.json());
 
 app.post("/signup", async function(req, res) {
+    const requiredBody = z.object({
+        email: z
+        .string()
+        .min(3,{message:"Email must be at least 3 characters long"})
+        .max(100,{message:"Email cannot exceed 100 characters"})
+        .email({message:"Must be a valid email address"})
+        .refine((value)=> value.endsWith("@mail.com"), {
+            message:"Email must end with @mail.com"
+        }),
+        name: z
+        .string()
+        .min(7,{message:"Name must be at least 7 characters long"})
+        .max(100, {message:"Name cannot exceed 100 characters"}),
+        password: z
+        .string()
+        .min(8, {message:"Password must at least 8 characters long"})
+        .max(15, {message:"Password cannot exceed 15 characters"})
+        .regex(/[A-Z]/, {message:"Password must contain at least one uppercase letter"})
+        .regex(/[a-z]/, {message:"Passowrd must contain at least one lowercase letter"})
+        .regex(/[0-9]/, {message:"Password must contain at least one number"})
+        .regex(/[@#!$?&]/, {message:"Password must contain at least one special character"})
+    })
+    // const parsedData = requiredBody.parse(req.body); //or
+    const parsedDatawithSuccess = requiredBody.safeParse(req.body);  
+
+    if(!parsedDatawithSuccess.success){
+        res.json({
+            message : "Incorrect format",
+            error: parsedDatawithSuccess.error
+        })
+        return 
+    }
+
     const email = req.body.email;
     const password = req.body.password;
     const name = req.body.name;
